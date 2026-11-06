@@ -1,0 +1,13 @@
+# Arquivos de ambiente e segredos locais (caso venha a usar .env)
+.env
+*.env
+
+# Dados dinâmicos ou relatórios gerados (mantendo a pasta no repositório)
+meus_arquivos/*
+!meus_arquivos/.gitkeep
+
+# Arquivos do sistema operacional e IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

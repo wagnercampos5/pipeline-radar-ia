@@ -1,0 +1,21 @@
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: n8n_pipeline
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_DEFAULT_BINARY_DATA_MODE=filesystem
+      - GENERIC_TIMEZONE=America/Cuiaba
+      - TZ=America/Cuiaba
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false
+      - NODE_FUNCTION_ALLOW_BUILTIN=*
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - N8N_RESTRICT_FILE_ACCESS_TO=/home/node/meus_arquivos
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./meus_arquivos:/home/node/meus_arquivos
+    restart: always
+
+volumes:
+  n8n_data:

@@ -1,0 +1,209 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "6e97ad95-c1ff-45dd-b201-4c7802729803",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search?query=Artificial%20Intelligence&tags=story&hitsPerPage=15",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "4defea43-dffc-4ff9-9df8-8cdb09b22d9e",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Obtém a lista bruta de artigos retornados pela API\nconst rawHits = $input.first().json.hits || [];\n\n// 1. Filtra itens com título e URL válidos\n// 2. Ordena pelos mais votados (pontos)\n// 3. Seleciona os 5 mais relevantes\nconst topStories = rawHits\n  .filter(item => item.title && (item.url || item.story_url))\n  .sort((a, b) => (b.points || 0) - (a.points || 0))\n  .slice(0, 5)\n  .map(item => ({\n    titulo: item.title,\n    pontos: item.points || 0,\n    autor: item.author,\n    link: item.url || item.story_url,\n    data_publicacao: item.created_at\n  }));\n\n// Retorna cada notícia como um item individual estruturado no padrão do n8n\nreturn topStories.map(story => ({ json: story }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "12ce78a0-c066-486e-b30a-1a5c7e5bcb19",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.5-flash-lite",
+          "mode": "list",
+          "cachedResultName": "Gemini 3.5 Flash Lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Atue como um Analista Sênior de Inteligência de Mercado e Tecnologia.\n\nAnalise a seguinte notícia recolhida do radar da indústria:\nTítulo original: {{ $json.titulo }}\nAutor: {{ $json.autor }}\nRelevância (Pontos da Comunidade): {{ $json.pontos }}\nLink de Origem: {{ $json.link }}\nData de Publicação: {{ $json.data_publicacao }}\n\nGere uma síntese executiva rigorosamente em PORTUGUÊS DO BRASIL (pt-BR) contendo:\n1. Título em Português: Tradução executiva e atraente do título.\n2. Resumo do Artigo: Síntese objetiva em 2 a 3 frases explicando o conteúdo.\n3. Impacto de Mercado: Análise estratégica em 2 frases sobre como isso impacta empresas, desenvolvedores ou negócios de tecnologia.\n4. Classificação de Tendência: [Oportunidade / Ameaça / Neutro / Tendência Emergente].\n\nMantenha a resposta concisa, estritamente em português do Brasil e formatada em Markdown limpo."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "4f9f0f51-14e5-4808-b709-2b900816bbd5",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "tPdBYS7Em1yQs8ST",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Obtém todos os itens processados pelo Gemini\nconst items = $input.all();\n\n// Data formatada para o cabeçalho do briefing\nconst hoje = new Date().toLocaleDateString('pt-BR', {\n  day: '2-digit',\n  month: '2-digit',\n  year: 'numeric'\n});\n\n// Cabeçalho do relatório\nlet briefingMarkdown = `# 🛰️ RADAR DE INTELIGÊNCIA DE MERCADO & IA\\n`;\nbriefingMarkdown += `**Data da Edição:** ${hoje} | **Curadoria:** Hacker News Top Stories\\n\\n`;\nbriefingMarkdown += `---\\n\\n`;\n\n// Itera sobre as análises geradas pelo Gemini e concatena no documento final\nitems.forEach((item, index) => {\n  // Captura o texto gerado pelo Gemini\n  const analise = item.json.content?.parts?.[0]?.text || item.json.text || item.json.output || JSON.stringify(item.json);\n  \n  briefingMarkdown += `### Item ${index + 1}\\n`;\n  briefingMarkdown += `${analise}\\n\\n`;\n  briefingMarkdown += `---\\n\\n`;\n});\n\n// Retorna um único objeto JSON contendo o relatório completo compilado\nreturn [\n  {\n    json: {\n      relatorio_final: briefingMarkdown,\n      total_itens: items.length,\n      data_extracao: hoje\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "60bfca76-68c7-43e8-84d1-36dd78668ed1",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "relatorio_final",
+        "options": {
+          "fileName": "briefing_ia.md"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.2,
+      "position": [
+        1264,
+        0
+      ],
+      "id": "28a652ee-b1b0-49de-8938-8ee1849d1780",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/home/node/meus_arquivos/briefing_ia.md",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1488,
+        0
+      ],
+      "id": "af88e2bd-4bd6-4457-a091-1b63e9a49a63",
+      "name": "Read/Write Files from Disk"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "fc94d3a7-a6ec-4d32-aeea-77ca904198b9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d24e369e4d47ca6fb4b59a00845a37bc7f6cb9968be43475462e0f2220927f1c"
+  },
+  "nodeGroups": [],
+  "id": "gkFUAl99mUN2ABmX",
+  "tags": []
+}
